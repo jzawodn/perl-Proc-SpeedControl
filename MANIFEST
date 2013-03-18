@@ -1,0 +1,6 @@
+Changes
+Makefile.PL
+MANIFEST
+README
+t/Proc-SpeedControl.t
+lib/Proc/SpeedControl.pm
