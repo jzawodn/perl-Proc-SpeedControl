@@ -190,6 +190,18 @@ So it is permissiable to specify something like this:
 
 And you'll get roughly 300 per minute.
 
+=head2 RAMP UP
+
+The ramp up feature provides a way to start with a lower than target
+rate to allow time for other systems to adapt (caches warming, buffers
+flushing, etc).
+
+TODO
+
+=head2 CALLBACK
+
+TODO
+
 =head2 EXPORT
 
 None by default.
