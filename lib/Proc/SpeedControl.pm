@@ -176,7 +176,7 @@ ways of saying "2 per second":
   * rate => 120, interval => 60
 
 For the sake of convenience, the "interval" parameter may one of the
-following strings (values in parenthesis are the actual values that
+following strings (values in parenthesis are the actual expressions that
 will be substituted):
 
   * minute (60)
