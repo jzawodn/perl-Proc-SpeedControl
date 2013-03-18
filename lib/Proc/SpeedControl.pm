@@ -171,8 +171,8 @@ to continue.
 One consequence of that, is that all of the following are equivalent
 ways of saying "2 per second":
 
-  * rate =>   2, interval => 1
-  * rate =>  10, interval => 5
+  * rate =>   2, interval =>  1
+  * rate =>  10, interval =>  5
   * rate => 120, interval => 60
 
 For the sake of convenience, the "interval" parameter may one of the
