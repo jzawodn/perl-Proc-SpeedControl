@@ -11,11 +11,11 @@ sub new {
     my ($class, @args) = @_;
     my $self = { @args };
     bless $self, $class;
-    $self->init();
+    $self->_init();
     return $self;
 }
 
-sub init {
+sub _init {
     my ($self, @args) = @_;
     $self->{rate} ||= 1;
     $self->{interval} ||= 1;
@@ -34,6 +34,8 @@ sub init {
     }
 
     $self->{target} = ($self->{rate} / $self->{interval});
+    $self->{ramp} ||= 100;
+    $self->{first_ramp} = $self->{ramp};
     $self->{default_work_done} ||= 1;
     $self->{total_work_done} ||= 0;
     $self->{last_sleep} ||= 1;
@@ -61,16 +63,39 @@ sub end {
 
 sub _compute_sleep {
     my ($self, $work_done) = @_;
+    my $sleep = 1; # default
+    my $target = $self->{target}; # we may modify during ramp up
+    my $now = [gettimeofday()];
+    $self->{total_work_done} += $work_done;
+    $self->{sleep_count}++;
 
     if (not $self->{first_run}) {
         $self->start();
-        return 1;
+        $self->log("first run");
+
+        $self->{last_sleep} = $sleep;
+        $self->{last_run} = $now;
+
+        return $sleep;
     }
 
-    my $now = [gettimeofday()];
+    # Handle ramp-up if specified or we're not at full speed yet.
+    # We'll adjust $target as needed and update $self->{ramp} for the
+    # next iteration.  $self->{first_ramp} will remain unchange since
+    # we use it to remember the initial value.
+
+    if ($self->{ramp} < 100) {
+        $target = $target * ($self->{ramp} / 100);
+        $self->{ramp} += $self->{ramp} * ($self->{first_ramp} / 100);
+        $self->{ramp} = 100 if ($self->{ramp} > 100);
+        $self->log("ramp: $self->{ramp}");
+    }
+
+    # Normal case
+
     my $elapsed = tv_interval($self->{last_run}, $now);
     my $achieved = $work_done / $elapsed;
-    my $mult = $achieved / $self->{target};
+    my $mult = $achieved / $target;
 
     # If $mult < 1 then we need to decrease the sleep by $mult
     #
@@ -78,14 +103,10 @@ sub _compute_sleep {
     #
     # If $mult is 1 then we're good to go
 
-    $self->log("elapsed: $elapsed, achieved: $achieved, target: $self->{target}, mult: $mult");
-
-    my $sleep = $self->{last_sleep} * $mult;
-
+    $self->log("elapsed: $elapsed, achieved: $achieved, target: $target, mult: $mult, ramp: $self->{ramp}");
+    $sleep = $self->{last_sleep} * $mult;
     $self->{last_sleep} = $sleep;
-    $self->{total_work_done} += $work_done;
     $self->{last_run} = $now;
-    $self->{sleep_count}++;
     $self->{average_sleep} = (($self->{average_sleep} * ($self->{sleep_count}-1)) + $self->{last_sleep}) / $self->{sleep_count};
     return $sleep;
 }
@@ -194,9 +215,18 @@ And you'll get roughly 300 per minute.
 
 The ramp up feature provides a way to start with a lower than target
 rate to allow time for other systems to adapt (caches warming, buffers
-flushing, etc).
+flushing, etc).  To use it, pass a "ramp" value between 1 and 100 in
+the constructor:
 
-TODO
+  # max speed is 10 per second, initial rate 5%
+  my $sc = Proc::SpeedControl->new(rate => 10, interval => 1, ramp => 5);
+
+That value, divided by 100, will specify the initial rate.  So you can
+think of it as a percentage.  The rate will increase from this value
+to the target rate at a rate that is proportional to the ramp value.
+Put anohter way, if you specify a low ramp value like 1 or 5, it will
+take longer to ramp up to the full rate than if you specify a value
+such as 20 or 50.
 
 =head2 CALLBACK
 
